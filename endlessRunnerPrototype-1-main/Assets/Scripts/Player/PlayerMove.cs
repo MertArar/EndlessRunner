@@ -1,31 +1,49 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerMove : MonoBehaviour
 {
+    // Player
+    public GameObject playerObject;
+    public CharacterController player;
+
+    // Speeds
     public float moveSpeed = 10f;
     public float leftRightSpeed = 2;
-    public float jumpingSpeed = 3;
-    public float slidingSpeed = 3;
+    public float jumpingSpeed = 10;
+    public float slidingSpeed = 0.5f;
+
+    // Times
+    private float elapsedTime = 0f;
+    private float increaseSpeedTime = 30f;
+
+    // Bool properties
     static public bool canMove = false;
+    private bool canMoveAfterLaneChange = true;
     public bool isJumping = false;
     public bool isSliding = false;
     public bool comingDown = false;
     public bool comingUp = false;
-    public GameObject playerObject;
-    
-    private float elapsedTime = 0f;
-    private float increaseSpeedTime = 30f;
-    
-    
-    private void Update()
-    {
 
+    private int currentLane = 1; // 0: Left, 1: Middle, 2: Right
+
+    private void Start()
+    {
+        player = GetComponent<CharacterController>();
+    }
+
+    private void FixedUpdate()
+    {
+        IncreaseValues();
+        PlayerController();
+        JumpFunctions();
+        SlideFunctions();
+    }
+
+    public void IncreaseValues()
+    {
         elapsedTime += Time.deltaTime;
 
-        
         if (elapsedTime >= 15f)
         {
             moveSpeed++;
@@ -42,28 +60,22 @@ public class PlayerMove : MonoBehaviour
         {
             leftRightSpeed = 6;
         }
-        
-        transform.Translate(Vector3.forward * moveSpeed * Time.deltaTime, Space.World);
-        
-        if (canMove == true)
-        {
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow))
-            {  
-                if (this.gameObject.transform.position.x > LevelBoundry.leftSide)
-                {
-                    transform.Translate(Vector3.left * Time.deltaTime * leftRightSpeed);
-                    //buraya zamanlıyıcı ve salisede 0.1 artsın selim agam anlar
+    }
 
-                }
+    public void PlayerController()
+    {
+        transform.Translate(Vector3.forward * moveSpeed * Time.deltaTime, Space.World);
+
+        if (canMove == true && canMoveAfterLaneChange == true)
+        {
+            if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
+            {
+                MoveLane(-1); // Move left
             }
 
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow))
+            if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
             {
-                if (this.gameObject.transform.position.x < LevelBoundry.rightSide)
-                {
-                    transform.Translate(Vector3.left * Time.deltaTime * leftRightSpeed * -1);
-                    //buraya zamanlıyıcı ve salisede 0.1 artsın selim agam anlar
-                }
+                MoveLane(1); // Move right
             }
 
             if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow) || Input.GetKey(KeyCode.Space))
@@ -86,7 +98,47 @@ public class PlayerMove : MonoBehaviour
                 }
             }
         }
+    }
 
+    private void MoveLane(int direction)
+    {
+        if (!canMoveAfterLaneChange)
+            return;
+
+        int newLane = Mathf.Clamp(currentLane + direction, 0, 2);
+
+        float targetX = (newLane - 1) * 1.33f; // Her şerit 4 birim genişliğinde
+        StartCoroutine(MoveToLane(targetX, 0.5f)); // Geçiş süresi 0.5 saniye
+
+        currentLane = newLane;
+        canMoveAfterLaneChange = false;
+        StartCoroutine(EnableMovementAfterDelay(0.001f)); // Yarım saniye sonra hareketi etkinleştir
+    }
+
+    private IEnumerator EnableMovementAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        canMoveAfterLaneChange = true;
+    }
+
+    private IEnumerator MoveToLane(float targetX, float duration)
+    {
+        float startTime = Time.time * Time.deltaTime;
+
+        while (Time.time < startTime + duration)
+        {
+            float t = ((Time.time - startTime) * Time.deltaTime) / duration;
+            float currentX = Mathf.Lerp(transform.position.x, targetX, t);
+            transform.position = new Vector3(currentX, transform.position.y, transform.position.z);
+
+            yield return null;
+        }
+
+        transform.position = new Vector3(targetX, transform.position.y, transform.position.z);
+    }
+
+    public void JumpFunctions()
+    {
         if (isJumping == true)
         {
             if (comingDown == false)
@@ -99,21 +151,20 @@ public class PlayerMove : MonoBehaviour
                 transform.Translate(Vector3.up * Time.deltaTime * -jumpingSpeed, Space.World);
             }
         }
+    }
 
+    public void SlideFunctions()
+    {
         if (isSliding == true)
         {
             if (comingUp == false)
             {
-                transform.Translate(Vector3.down * Time.deltaTime * slidingSpeed, Space.World);
-            }
-
-            if (comingUp == true)
-            {
-                transform.Translate(Vector3.down * Time.deltaTime * -slidingSpeed, Space.World);
+                transform.Translate(Vector3.forward * Time.deltaTime * 0.5f);
             }
         }
     }
 
+    // Numerators
     IEnumerator JumpSequence()
     {
         yield return new WaitForSeconds(0.45f);
@@ -133,4 +184,4 @@ public class PlayerMove : MonoBehaviour
         comingUp = false;
         playerObject.GetComponent<Animator>().Play("Standard Run");
     }
-} 
+}

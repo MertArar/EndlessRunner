@@ -108,11 +108,11 @@ public class PlayerMove : MonoBehaviour
         int newLane = Mathf.Clamp(currentLane + direction, 0, 2);
 
         float targetX = (newLane - 1) * 1.33f; // Her şerit 4 birim genişliğinde
-        StartCoroutine(MoveToLane(targetX, 0.5f)); // Geçiş süresi 0.5 saniye
+        StartCoroutine(MoveToLane(targetX, 1f)); // Geçiş süresi 0.5 saniye
 
         currentLane = newLane;
         canMoveAfterLaneChange = false;
-        StartCoroutine(EnableMovementAfterDelay(0.001f)); // Yarım saniye sonra hareketi etkinleştir
+        StartCoroutine(EnableMovementAfterDelay(0)); // Yarım saniye sonra hareketi etkinleştir
     }
 
     private IEnumerator EnableMovementAfterDelay(float delay)
